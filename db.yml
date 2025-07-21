@@ -1,0 +1,13 @@
+version: '3.3'
+
+volumes:
+  pg:
+
+services:
+  db_local:
+    image: postgres:13
+    env_file: .env
+    volumes:
+      - pg:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"

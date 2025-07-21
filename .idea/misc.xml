@@ -3,4 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (BDasyncio)" />
   </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10 (python_parser_web_save_to_db)" project-jdk-type="Python SDK" />
 </project>

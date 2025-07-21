@@ -1,3 +1,6 @@
 aiohttp==3.12.14
 bs4==0.0.2
 xlrd==2.0.2
+dotenv==0.9.9
+SQLAlchemy==2.0.41
+asyncpg==0.30.0
