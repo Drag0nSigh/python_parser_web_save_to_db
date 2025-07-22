@@ -4,3 +4,8 @@ xlrd==2.0.2
 dotenv==0.9.9
 SQLAlchemy==2.0.41
 asyncpg==0.30.0
+isort==6.0.1
+flake8==7.3.0
+black==25.1.0
+pre-commit==4.2.0
+autoflake==2.3.1
