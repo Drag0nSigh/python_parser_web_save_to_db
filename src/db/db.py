@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class Database:
-    def __init__(self, host: str, db_name: str, db_password: str, user: str, db_port: int = 5432):
+    def __init__(
+        self, host: str, db_name: str, db_password: str, user: str, db_port: int = 5432
+    ):
         """Инициализирует объект для работы с базой данных PostgreSQL.
 
         Args:
@@ -36,42 +38,48 @@ class Database:
         self.db_port = db_port
         self.engine = None
         self.session_factory = None
-        self.base_url = f'postgresql+asyncpg://{user}:{db_password}@{host}:{db_port}'
+        self.base_url = f"postgresql+asyncpg://{user}:{db_password}@{host}:{db_port}"
 
     async def create_db(self):
         """Создает базу данных, если она не существует."""
         try:
             conn = await asyncpg.connect(
-                database='postgres',
+                database="postgres",
                 user=self.user,
                 password=self.db_password,
                 host=self.host,
                 port=self.db_port,
             )
-            result = await conn.fetchval('SELECT 1 FROM pg_database WHERE datname=$1', self.db_name)
+            result = await conn.fetchval(
+                "SELECT 1 FROM pg_database WHERE datname=$1", self.db_name
+            )
             if not result:
-                logger.info(f'Создаётся БД: {self.db_name}')
-                await conn.execute(f'CREATE DATABASE {self.db_name}')
+                logger.info(f"Создаётся БД: {self.db_name}")
+                await conn.execute(f"CREATE DATABASE {self.db_name}")
             else:
-                logger.info(f'База данных {self.db_name} уже существует')
+                logger.info(f"База данных {self.db_name} уже существует")
             await conn.close()
         except Exception as e:
-            logger.error(f'При создании БД {self.db_name} произошла ошибка {e}')
+            logger.error(f"При создании БД {self.db_name} произошла ошибка {e}")
 
     async def init_db(self):
         """Инициализируем базу данных и создаём таблицы"""
 
         await self.create_db()
-        self.engine = create_async_engine(f'{self.base_url}/{self.db_name}', pool_pre_ping=True, echo=True)
+        self.engine = create_async_engine(
+            f"{self.base_url}/{self.db_name}", pool_pre_ping=True, echo=True
+        )
 
         try:
             async with self.engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-                logger.info('Таблица успешно создана или существует')
+                logger.info("Таблица успешно создана или существует")
         except Exception as e:
-            logger.error(f'Ошибка при создании таблиц {e}')
+            logger.error(f"Ошибка при создании таблиц {e}")
 
-        self.session_factory = async_sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        self.session_factory = async_sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
     async def close_db(self):
         """Закрывает движок базы данных, если он был инициализирован."""
@@ -79,14 +87,18 @@ class Database:
             await self.engine.dispose()
             self.engine = None
             self.session_factory = None
-            logger.info('Движок базы данных закрыт')
+            logger.info("Движок базы данных закрыт")
 
     async def get_session(self) -> AsyncSession:
         """Возвращает асинхронную сессию SQLAlchemy для работы с базой данных."""
         if self.session_factory is None:
             if self.engine is None:
-                self.engine = create_async_engine(f'{self.base_url}/{self.db_name}', pool_pre_ping=True, echo=True)
-            self.session_factory = async_sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+                self.engine = create_async_engine(
+                    f"{self.base_url}/{self.db_name}", pool_pre_ping=True, echo=True
+                )
+            self.session_factory = async_sessionmaker(
+                self.engine, class_=AsyncSession, expire_on_commit=False
+            )
         return self.session_factory()
 
     async def get_max_data_bulletin(self) -> Optional[datetime.date]:
@@ -102,7 +114,7 @@ class Database:
         async with await self.get_session() as session:
             try:
                 max_data_bulletin = await session.execute(func.max(Bulletin.date))
-                logger.info(f'Максимальная дата биллютеня: {max_data_bulletin}')
+                logger.info(f"Максимальная дата биллютеня: {max_data_bulletin}")
                 max_data_bulletin = max_data_bulletin.scalar()
                 return max_data_bulletin
             except Exception as e:
@@ -133,4 +145,4 @@ class Database:
                         await session.execute(insert(Bulletin), data_bulletin)
                         await session.commit()
                 except Exception as e:
-                    logger.error(f'Ошибка при записи в БД {e}')
+                    logger.error(f"Ошибка при записи в БД {e}")

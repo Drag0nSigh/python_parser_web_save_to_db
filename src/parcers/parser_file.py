@@ -32,7 +32,9 @@ class FileParser:
         logger.error(f"Не найдены все необходимые заголовки в строке: {row}")
         return {}
 
-    async def parse_file(self, file_content: Optional[bytes], date_file: datetime) -> List[Dict[str, Any]]:
+    async def parse_file(
+        self, file_content: Optional[bytes], date_file: datetime
+    ) -> List[Dict[str, Any]]:
         """Парсинг содержимого XLS-файла и извлечение данных из таблицы с единицей измерения 'Метрическая тонна'.
 
         Args:
@@ -60,7 +62,11 @@ class FileParser:
             # Проход по строкам для поиска нужной секции
             for index, row in enumerate(data):
                 # Проверяем начало секции 'Метрическая тонна'
-                if len(row) > 1 and isinstance(row[1], str) and METRIC_TON_UNIT in row[1]:
+                if (
+                    len(row) > 1
+                    and isinstance(row[1], str)
+                    and METRIC_TON_UNIT in row[1]
+                ):
                     in_metric_ton_section = True
                     continue
 
@@ -73,33 +79,54 @@ class FileParser:
                 if not column_indices and in_metric_ton_section:
                     column_indices = self.process_headers(row)
                     if column_indices:
-                        skip_next_row = True  # Пропускаем следующую строку (подзаголовки)
+                        skip_next_row = (
+                            True  # Пропускаем следующую строку (подзаголовки)
+                        )
                     continue
 
                 # Проверяем конец секции
-                if len(row) > 1 and isinstance(row[1], str) and (METRIC_TON_UNIT in row[1] or ITOGO in row[1]):
+                if (
+                    len(row) > 1
+                    and isinstance(row[1], str)
+                    and (METRIC_TON_UNIT in row[1] or ITOGO in row[1])
+                ):
                     in_metric_ton_section = False
                     continue
 
                 # Обрабатываем строки в нужной секции
-                if in_metric_ton_section and row[1] and isinstance(row[1], str) and len(row[1]) > 3:
+                if (
+                    in_metric_ton_section
+                    and row[1]
+                    and isinstance(row[1], str)
+                    and len(row[1]) > 3
+                ):
                     try:
                         # Проверяем наличие всех необходимых столбцов
                         if not all(col in column_indices for col in COLUMN_NAMES):
-                            logger.error(f"Недостаточно столбцов для обработки строки {index}: {row}")
+                            logger.error(
+                                f"Недостаточно столбцов для обработки строки {index}: {row}"
+                            )
                             continue
 
-                        result.extend(self.valid_row_in_dict_for_db(row, column_indices, date_file))
+                        result.extend(
+                            self.valid_row_in_dict_for_db(
+                                row, column_indices, date_file
+                            )
+                        )
                     except (ValueError, IndexError) as e:
                         logger.error(f"Ошибка при обработке строки {index}: {e}")
                         continue
 
-            logger.info(f"Извлечено {len(result)} записей для даты {date_file.strftime(DATE_FORMAT)}")
+            logger.info(
+                f"Извлечено {len(result)} записей для даты {date_file.strftime(DATE_FORMAT)}"
+            )
             result = self.add_new_key_in_dict_for_db(result)
             return result
 
         except Exception as e:
-            logger.error(f"Общая ошибка при парсинге файла для даты {date_file.strftime(DATE_FORMAT)}: {e}")
+            logger.error(
+                f"Общая ошибка при парсинге файла для даты {date_file.strftime(DATE_FORMAT)}: {e}"
+            )
             return []
 
     @staticmethod
@@ -114,7 +141,9 @@ class FileParser:
             bool: True, если файл содержит данные, False, если файл отсутствует.
         """
         if file_content is None:
-            logger.info(f"Пропуск парсинга, файл не скачан для даты: {date_file.strftime(DATE_FORMAT)}")
+            logger.info(
+                f"Пропуск парсинга, файл не скачан для даты: {date_file.strftime(DATE_FORMAT)}"
+            )
             return False
         return True
 
@@ -129,14 +158,20 @@ class FileParser:
         Returns:
             bool: True, если файл не является HTML, False, если файл является HTML.
         """
-        is_html = file_content.startswith(b"<!DOCTYPE") or file_content.startswith(b"<html")
+        is_html = file_content.startswith(b"<!DOCTYPE") or file_content.startswith(
+            b"<html"
+        )
         if is_html:
-            logger.error(f"Файл для даты {date_file.strftime(DATE_FORMAT)} является HTML, а не XLS")
+            logger.error(
+                f"Файл для даты {date_file.strftime(DATE_FORMAT)} является HTML, а не XLS"
+            )
             return False
         return True
 
     @staticmethod
-    def xls_to_list_data(file_content: Optional[bytes], date_file: datetime) -> List[List[str]]:
+    def xls_to_list_data(
+        file_content: Optional[bytes], date_file: datetime
+    ) -> List[List[str]]:
         """Чтение XLS-файла и преобразование его в список строк.
 
         Args:
@@ -156,10 +191,14 @@ class FileParser:
             for row_idx in range(sheet.nrows):
                 row = sheet.row_values(row_idx)
                 data.append(row)
-            logger.info(f"Файл для даты {date_file.strftime(DATE_FORMAT)} успешно прочитан как XLS")
+            logger.info(
+                f"Файл для даты {date_file.strftime(DATE_FORMAT)} успешно прочитан как XLS"
+            )
             return data
         except xlrd.XLRDError as xlrd_err:
-            logger.error(f"Ошибка при чтении XLS для даты {date_file.strftime(DATE_FORMAT)}: {xlrd_err}")
+            logger.error(
+                f"Ошибка при чтении XLS для даты {date_file.strftime(DATE_FORMAT)}: {xlrd_err}"
+            )
             return []
 
     @staticmethod
@@ -183,7 +222,8 @@ class FileParser:
         try:
             count = (
                 int(float(row[column_indices[count_col]]))
-                if len(row) > column_indices[count_col] and row[column_indices[count_col]]
+                if len(row) > column_indices[count_col]
+                and row[column_indices[count_col]]
                 else 0
             )
         except (ValueError, TypeError):
@@ -195,11 +235,19 @@ class FileParser:
                 col_type = COLUMN_NAMES[col_name]["type"]
                 if col_type == "int":
                     try:
-                        value = int(float(row[col_idx])) if len(row) > col_idx and row[col_idx] else 0
+                        value = (
+                            int(float(row[col_idx]))
+                            if len(row) > col_idx and row[col_idx]
+                            else 0
+                        )
                     except (ValueError, TypeError):
                         value = 0
                 else:
-                    value = str(row[col_idx]).strip() if len(row) > col_idx and row[col_idx] else ""
+                    value = (
+                        str(row[col_idx]).strip()
+                        if len(row) > col_idx and row[col_idx]
+                        else ""
+                    )
                 record[field_key] = value
                 record[data_col] = date_bulletin
             result.append(record)
@@ -210,7 +258,9 @@ class FileParser:
         result = []
         for one_entry in data:
             one_entry["oil_id"] = one_entry.get("exchange_product_id", "")[:4]
-            one_entry["delivery_basis_id"] = one_entry.get("exchange_product_id", "")[4:7]
+            one_entry["delivery_basis_id"] = one_entry.get("exchange_product_id", "")[
+                4:7
+            ]
             one_entry["delivery_type_id"] = one_entry.get("delivery_basis_id", "")[-1]
             result.append(one_entry)
         return result
