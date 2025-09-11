@@ -1,10 +1,17 @@
 import asyncio
 import logging
+import sys
+from pathlib import Path
 
-from src.constante import DEFAULT_CUTOFF_DATE
-from src.db.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from src.db.db import Database
-from src.parcers.parser_link import SpimexParser
+# Добавляем корневую директорию проекта в Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Импорты после добавления пути в sys.path
+from src.constante import DEFAULT_CUTOFF_DATE  # noqa: E402
+from src.db.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER  # noqa: E402
+from src.db.db import Database  # noqa: E402
+from src.parcers.parser_link import SpimexParser  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
