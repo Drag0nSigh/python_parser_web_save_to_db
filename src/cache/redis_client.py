@@ -2,19 +2,19 @@ import json
 import asyncio
 from datetime import datetime, time
 from typing import Any, Optional
-import aioredis
+import redis.asyncio as redis
 from src.cache.config import REDIS_URL, CACHE_RESET_TIME
 
 
 class RedisClient:
     def __init__(self):
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: Optional[redis.Redis] = None
         self._scheduler_task: Optional[asyncio.Task] = None
         self._is_running = False
 
     async def connect(self):
         """Подключение к Redis и запуск планировщика"""
-        self.redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+        self.redis = redis.from_url(REDIS_URL, decode_responses=True)
         self._is_running = True
         # Запускаем планировщик в фоновом режиме
         self._scheduler_task = asyncio.create_task(self._scheduler())
