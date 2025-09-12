@@ -20,5 +20,15 @@ class BulletinModel(BaseModel):
     created_on: Optional[datetime]
     updated_on: Optional[datetime]
 
+class BulletinModelShort(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    date: Optional[date]
+    oil_id: Optional[str]
+    delivery_basis_id: Optional[str]
+    delivery_type_id: Optional[str]
+    volume: Optional[int]
+    total: Optional[int]
+    count: Optional[int]
+    exchange_product_name: Optional[str]
 
-__all__ = ["BulletinModel"]
+__all__ = ["BulletinModel","BulletinModelShort"]

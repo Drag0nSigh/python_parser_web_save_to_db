@@ -6,7 +6,7 @@ from sqlalchemy import and_, desc, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_session
-from src.api.models import BulletinModel
+from src.api.models import BulletinModel, BulletinModelShort
 from src.db.bulletin import Bulletin
 
 
@@ -67,18 +67,7 @@ async def get_dynamics(
     result = await session.execute(query)
     rows = result.scalars().all()
     return [
-        BulletinModel.model_validate(row, from_attributes=True).model_dump(
-            include=[
-                "date",
-                "oil_id",
-                "delivery_basis_id",
-                "delivery_type_id",
-                "volume",
-                "total",
-                "count",
-                "exchange_product_name",
-            ]
-        )
+        BulletinModelShort.model_validate(row, from_attributes=True).model_dump()
         for row in rows
     ]
 
@@ -89,7 +78,7 @@ async def get_trading_results(
     delivery_basis_id: Optional[str] = Query(None, description="ID базиса поставки"),
     limit: int = Query(100, ge=1, description="Количество последних торгов"),
     session: AsyncSession = Depends(get_session),
-) -> List[BulletinModel]:
+) -> List[dict]:
     """Получить список последних торгов с фильтрацией."""
     query = select(Bulletin)
 
@@ -112,7 +101,9 @@ async def get_trading_results(
 
     result = await session.execute(query)
     rows = result.scalars().all()
-    return [BulletinModel.model_validate(row, from_attributes=True) for row in rows]
+    return [BulletinModelShort.model_validate(row, from_attributes=True).model_dump() for row in rows]
+
+
 
 
 __all__ = ["health_check", "list_bulletins", "get_last_trading_dates", "get_dynamics", "get_trading_results"]
