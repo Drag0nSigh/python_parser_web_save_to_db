@@ -5,8 +5,9 @@ from fastapi import Depends, Query
 from sqlalchemy import and_, desc, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_session
+from src.api.deps import get_session, get_redis
 from src.api.models import BulletinModel, BulletinModelShort
+from src.cache.decorators import cached, manual_cache_clear
 from src.db.bulletin import Bulletin
 
 
@@ -31,6 +32,7 @@ async def get_last_trading_dates(
     return [date.isoformat() for date in dates if date]
 
 
+@cached(key_prefix="dynamics")
 async def get_dynamics(
     oil_id: Optional[str] = Query(None, description="ID нефтепродукта"),
     delivery_type_id: Optional[str] = Query(None, description="ID типа поставки"),
@@ -72,6 +74,7 @@ async def get_dynamics(
     ]
 
 
+@cached(key_prefix="trading_results")
 async def get_trading_results(
     oil_id: Optional[str] = Query(None, description="ID нефтепродукта"),
     delivery_type_id: Optional[str] = Query(None, description="ID типа поставки"),
@@ -102,6 +105,19 @@ async def get_trading_results(
     result = await session.execute(query)
     rows = result.scalars().all()
     return [BulletinModelShort.model_validate(row, from_attributes=True).model_dump() for row in rows]
+
+
+async def get_cache_info(redis_client=Depends(get_redis)) -> dict:
+    """Получить информацию о состоянии кэша"""
+    return await redis_client.get_cache_info()
+
+
+@manual_cache_clear()
+async def clear_cache() -> dict:
+    """Ручная очистка всего кэша"""
+    return {"message": "Кэш очищен вручную"}
+
+
 
 
 

@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.cache.redis_client import redis_client
 from src.db.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from src.db.db import Database
 
@@ -20,4 +21,9 @@ async def get_session() -> AsyncSession:
         await session.close()
 
 
-__all__ = ["database", "get_session"]
+async def get_redis():
+    """Получить Redis клиент"""
+    return redis_client
+
+
+__all__ = ["database", "get_session", "get_redis"]

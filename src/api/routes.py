@@ -12,5 +12,7 @@ router.add_api_route("/dynamics", views.get_dynamics, methods=["GET"], summary="
 router.add_api_route(
     "/trading-results", views.get_trading_results, methods=["GET"], summary="Последние результаты торгов"
 )
+router.add_api_route("/cache/info", views.get_cache_info, methods=["GET"], summary="Информация о кэше")
+router.add_api_route("/cache/clear", views.clear_cache, methods=["POST"], summary="Очистка кэша")
 
 __all__ = ["router"]
