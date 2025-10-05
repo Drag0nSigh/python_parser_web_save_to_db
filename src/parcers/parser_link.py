@@ -146,9 +146,7 @@ class SpimexParser:
                 try:
                     date_file = datetime.strptime(date_str, self.date_format)
                     if not self._is_valid_date(date_file):
-                        logger.info(
-                            f"Невалидная дата {date_file.strftime(self.date_format)}, завершение перебора"
-                        )
+                        logger.info(f"Невалидная дата {date_file.strftime(self.date_format)}, завершение перебора")
                         found_invalid_date = True
                         break
                     parsed_url = urllib.parse.urlparse(href)
@@ -188,7 +186,7 @@ class SpimexParser:
         if self.max_date is None:
             return date_file >= self.cutoff_date
         # Если max_date задано, проверяем, что date_file в диапазоне [max_date, current_date]
-        return self.max_date < datetime.date(date_file) <= datetime.date(current_date)
+        return datetime.date(self.max_date) < datetime.date(date_file) <= datetime.date(current_date)
 
     async def produce_links(self) -> None:
         """Асинхронно извлекает ссылки на XLS-файлы с пагинированных страниц и добавляет их в очередь.
@@ -208,9 +206,7 @@ class SpimexParser:
 
                 html = await self.fetch_page(page_number)
                 if html is None:
-                    logger.info(
-                        f"Прекращение обработки: не удалось загрузить страницу {page_number}"
-                    )
+                    logger.info(f"Прекращение обработки: не удалось загрузить страницу {page_number}")
                     break
                 links, found_invalid_date = await self.parse_links(html)
                 if not links and not found_invalid_date:
@@ -222,9 +218,7 @@ class SpimexParser:
                     await self.queue_link.put((link, date_file))
 
                 if found_invalid_date:
-                    logger.info(
-                        f"Обнаружена невалидная дата на странице {page_number}, завершение"
-                    )
+                    logger.info(f"Обнаружена невалидная дата на странице {page_number}, завершение")
                     break
 
                 page_number += 1
@@ -236,9 +230,7 @@ class SpimexParser:
             logger.info("Продюсер завершил работу")
             self.producer_link_done.set()
 
-    async def consume_links(
-        self, downloader: FileDownloader, parser: FileParser
-    ) -> None:
+    async def consume_links(self, downloader: FileDownloader, parser: FileParser) -> None:
         """Обрабатывает ссылки из очереди: скачивает файлы и парсит их, помещая данные в очередь для базы данных.
 
         Args:
@@ -256,9 +248,7 @@ class SpimexParser:
         self.producer_db += 1
         while not (self.producer_link_done.is_set() and self.queue_link.empty()):
             try:
-                link, date_file = await asyncio.wait_for(
-                    self.queue_link.get(), timeout=self.consumer_timeout
-                )
+                link, date_file = await asyncio.wait_for(self.queue_link.get(), timeout=self.consumer_timeout)
                 logger.info(f"Достали из очереди {link}")
                 file_content = await downloader.download_file(link)
                 parsed_data = await parser.parse_file(file_content, date_file)
@@ -283,8 +273,7 @@ class SpimexParser:
         try:
             producer = asyncio.create_task(self.produce_links())
             consumers = [
-                asyncio.create_task(self.consume_links(downloader, parser))
-                for _ in range(self.num_consumers_link)
+                asyncio.create_task(self.consume_links(downloader, parser)) for _ in range(self.num_consumers_link)
             ]
             await asyncio.gather(producer, *consumers)
         except Exception as e:

@@ -1,15 +1,23 @@
 """Конфигурация pytest для проекта."""
 
-import sys
-from pathlib import Path
+import datetime
 from unittest.mock import AsyncMock
 
 import aiohttp
 import pytest
 
-# Добавляем корень проекта в PYTHONPATH
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from src.constante import (
+    BASE_URL,
+    CONSUMER_TIMEOUT,
+    DATE_FORMAT,
+    LINK_CLASS,
+    LINK_PATTERN,
+    NUM_CONSUMERS_LINK,
+    PAGE_PARAM,
+    REQUEST_DELAY,
+)
+from src.db.db import Database
+from src.parcers.parser_link import SpimexParser
 
 
 @pytest.fixture
@@ -21,6 +29,21 @@ def mock_session():
 @pytest.fixture
 def database():
     """Фикстура для создания объекта Database для тестов."""
-    from src.db.db import Database
-
     return Database("localhost", "test_db", "password", "user", 5432)
+
+
+@pytest.fixture
+def spimexparser():
+    """Фикстура для создания объекта SpimexParser для тестов."""
+    return SpimexParser(
+        datetime.datetime(2025, 1, 1),
+        None,
+        BASE_URL,
+        LINK_CLASS,
+        LINK_PATTERN,
+        PAGE_PARAM,
+        DATE_FORMAT,
+        NUM_CONSUMERS_LINK,
+        CONSUMER_TIMEOUT,
+        REQUEST_DELAY,
+    )
