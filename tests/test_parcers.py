@@ -264,14 +264,161 @@ class TestSpimexParser:
         with patch("src.parcers.parser_link.datetime") as mock_datetime:
             # Настраиваем мок для now()
             mock_datetime.now.return_value = current_date
-
-            def mock_date(dt):
-                if hasattr(dt, "date"):
-                    return dt.date()
-                return datetime.date(dt)
-
-            mock_datetime.date = mock_date
             mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
 
             result = spimexparser._is_valid_date(date_file)
             assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_parse_links_success(self, spimexparser):
+        """Тест успешного парсинга ссылок с валидными датами"""
+        # Подготовка тестового HTML
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250105162000.xls">Бюллетень 05.01.2025</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250104162000.xls">Бюллетень 04.01.2025</a>
+            </body>
+        </html>
+        """
+        
+        # Мокируем _is_valid_date, чтобы все даты были валидными
+        with patch.object(spimexparser, '_is_valid_date', return_value=True):
+            # Выполнение теста
+            result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки
+        assert len(result) == 2
+        assert found_invalid_date is False
+        assert result[0][0] == "https://spimex.com/upload/reports/oil_xls/oil_xls_20250105162000.xls"
+        assert result[0][1] == datetime(2025, 1, 5)
+        assert result[1][0] == "https://spimex.com/upload/reports/oil_xls/oil_xls_20250104162000.xls"
+        assert result[1][1] == datetime(2025, 1, 4)
+
+    @pytest.mark.asyncio
+    async def test_parse_links_with_invalid_date(self, spimexparser):
+        """Тест парсинга ссылок с невалидной датой (прерывание по дате)"""
+        # Подготовка тестового HTML
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250105162000.xls">Бюллетень 05.01.2025</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20241230162000.xls">Бюллетень 30.12.2024</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20241229162000.xls">Бюллетень 29.12.2024</a>
+            </body>
+        </html>
+        """
+        
+        # Мокируем _is_valid_date: первая дата валидна, остальные - нет
+        with patch.object(spimexparser, '_is_valid_date', side_effect=[True, False, False]):
+            # Выполнение теста
+            result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки - должна быть обработана только первая ссылка
+        assert len(result) == 1
+        assert found_invalid_date is True
+        assert result[0][1] == datetime(2025, 1, 5)
+
+    @pytest.mark.asyncio
+    async def test_parse_links_empty_html(self, spimexparser):
+        """Тест парсинга пустого HTML (нет ссылок)"""
+        html = """
+        <html>
+            <body>
+                <p>Нет ссылок</p>
+            </body>
+        </html>
+        """
+        
+        # Выполнение теста
+        result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки
+        assert len(result) == 0
+        assert found_invalid_date is False
+
+    @pytest.mark.asyncio
+    async def test_parse_links_no_matching_pattern(self, spimexparser):
+        """Тест парсинга HTML с ссылками, не соответствующими паттерну"""
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/some/other/link.xls">Другой файл</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/no_date_here.xls">Без даты</a>
+            </body>
+        </html>
+        """
+        
+        # Выполнение теста
+        result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки - ссылки не соответствуют паттерну, поэтому результат пустой
+        assert len(result) == 0
+        assert found_invalid_date is False
+
+    @pytest.mark.asyncio
+    async def test_parse_links_with_malformed_date(self, spimexparser):
+        """Тест парсинга ссылок с некорректной датой (должна быть пропущена)"""
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20259999162000.xls">Некорректная дата</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250105162000.xls">Бюллетень 05.01.2025</a>
+            </body>
+        </html>
+        """
+        
+        # Мокируем _is_valid_date, чтобы вторая дата была валидной
+        with patch.object(spimexparser, '_is_valid_date', return_value=True):
+            # Выполнение теста
+            result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки - некорректная дата должна быть пропущена, валидная обработана
+        assert len(result) == 1
+        assert found_invalid_date is False
+        assert result[0][1] == datetime(2025, 1, 5)
+
+    @pytest.mark.asyncio
+    async def test_parse_links_with_query_params(self, spimexparser):
+        """Тест парсинга ссылок с параметрами запроса (должны быть удалены)"""
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250105162000.xls?version=1&tracking=abc">Бюллетень</a>
+            </body>
+        </html>
+        """
+        
+        # Мокируем _is_valid_date
+        with patch.object(spimexparser, '_is_valid_date', return_value=True):
+            # Выполнение теста
+            result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки - параметры запроса должны быть удалены
+        assert len(result) == 1
+        assert "?" not in result[0][0]
+        assert result[0][0] == "https://spimex.com/upload/reports/oil_xls/oil_xls_20250105162000.xls"
+
+    @pytest.mark.asyncio
+    async def test_parse_links_with_max_date(self, spimexparser):
+        """Тест парсинга ссылок с установленным max_date"""
+        html = """
+        <html>
+            <body>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250105162000.xls">Бюллетень 05.01.2025</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250103162000.xls">Бюллетень 03.01.2025</a>
+                <a class="accordeon-inner__item-title link xls" href="/upload/reports/oil_xls/oil_xls_20250102162000.xls">Бюллетень 02.01.2025</a>
+            </body>
+        </html>
+        """
+        
+        # Мокируем _is_valid_date: первая дата валидна, остальные - нет
+        with patch.object(spimexparser, '_is_valid_date', side_effect=[True, False, False]):
+            # Выполнение теста
+            result, found_invalid_date = await spimexparser.parse_links(html)
+        
+        # Проверки - должна быть обработана только первая ссылка (05.01)
+        # 03.01 и 02.01 должны быть отфильтрованы
+        assert len(result) == 1
+        assert found_invalid_date is True
+        assert result[0][1] == datetime(2025, 1, 5)
